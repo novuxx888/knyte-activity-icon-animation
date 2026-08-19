@@ -488,9 +488,9 @@
             reaches 11111 only at the turning point, then
             immediately begins draining from the left.
 
-          Both modes keep the final transition:
-            00001 -> 00000 -> 10000
-          with no endpoint crossfade.
+          Both modes use a smooth wraparound:
+            00001 -> crossfade -> 10000
+          so the traveling signal remains continuous.
         */
 
         const MIN_BAR_OPACITY = 0.08;
@@ -531,16 +531,15 @@
               brightness[i] = clamp(i - drainPosition + 1, 0, 1);
             }
           } else {
-            // 00001 -> 00000 -> 10000
-            const restartPhase = statePosition - 8; // 0..1
+            /*
+              Smooth wraparound:
+                00001 -> crossfade -> 10000
 
-            if (restartPhase < 0.5) {
-              const fadeOut = restartPhase / 0.5;
-              brightness[4] = 1 - fadeOut;
-            } else {
-              const fadeIn = (restartPhase - 0.5) / 0.5;
-              brightness[0] = fadeIn;
-            }
+              Rightmost fades out while leftmost fades in.
+            */
+            const restartPhase = statePosition - 8; // 0..1
+            brightness[4] = 1 - restartPhase;
+            brightness[0] = restartPhase;
           }
         } else {
           if (statePosition < 4) {
@@ -560,16 +559,15 @@
               brightness[i] = clamp(i - drainPosition + 1, 0, 1);
             }
           } else {
-            // 00001 -> 00000 -> 10000
-            const restartPhase = statePosition - 8; // 0..1
+            /*
+              Smooth wraparound:
+                00001 -> crossfade -> 10000
 
-            if (restartPhase < 0.5) {
-              const fadeOut = restartPhase / 0.5;
-              brightness[4] = 1 - fadeOut;
-            } else {
-              const fadeIn = (restartPhase - 0.5) / 0.5;
-              brightness[0] = fadeIn;
-            }
+              Rightmost fades out while leftmost fades in.
+            */
+            const restartPhase = statePosition - 8; // 0..1
+            brightness[4] = 1 - restartPhase;
+            brightness[0] = restartPhase;
           }
         }
 
