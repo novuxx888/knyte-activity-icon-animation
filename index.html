@@ -285,23 +285,30 @@
       const stateName = document.getElementById("stateName");
       const status = document.getElementById("status");
 
-      // Exact 5-on / 4-off bar cycle.
       const executionStates = [
-        [1,0,0,0,0], // 10000
-        [1,1,0,0,0], // 11000
-        [1,1,1,0,0], // 11100
-        [1,1,1,1,0], // 11110
-        [1,1,1,1,1], // 11111
-        [0,1,1,1,1], // 01111
-        [0,0,1,1,1], // 00111
-        [0,0,0,1,1], // 00011
-        [0,0,0,0,1]  // 00001
+        [1,0,0,0,0],
+        [1,1,0,0,0],
+        [1,1,1,0,0],
+        [1,1,1,1,0],
+        [1,1,1,1,1],
+        [0,1,1,1,1],
+        [0,0,1,1,1],
+        [0,0,0,1,1],
+        [0,0,0,0,1]
       ];
 
       const TOTAL_TICKS = 18;
+      const MIN_BRIGHTNESS = 0.28;
+      const MAX_BRIGHTNESS = 1.0;
 
       const config = {
-        state: "active",
+        idle: {
+          border: "off",
+          bars: "off",
+          pulse: "none",
+          pulseStyle: "smooth",
+          speed: 300
+        },
         active: {
           border: "moving",
           bars: "animated",
@@ -310,42 +317,32 @@
           speed: 300
         },
         waiting: {
+          border: "solid",
+          bars: "solid",
           pulse: "both",
           pulseStyle: "smooth",
           speed: 300
         }
       };
 
+      let currentState = "active";
       let tick = 0;
       let timer = null;
 
+      function getSettings() {
+        return config[currentState];
+      }
+
       function paintBars(state) {
-        bars.forEach((bar, i) => bar.classList.toggle("on", state[i] === 1));
+        bars.forEach((bar, i) => {
+          bar.classList.toggle("on", state[i] === 1);
+        });
       }
 
       function getAnimatedBarState() {
         const index = Math.floor(tick / 2);
         return { index, state: executionStates[index] };
       }
-
-      /*
-        ========================================
-        PULSE MODEL
-
-        One source of truth:
-        pulseBrightness(tick, style)
-
-        Normal:
-          0..8  -> dim to bright
-          9..17 -> bright to dim
-
-        Offset:
-          use tick + 9 for the inverse phase.
-        ========================================
-      */
-
-      const MIN_BRIGHTNESS = 0.28;
-      const MAX_BRIGHTNESS = 1.0;
 
       function pulseBrightness(pulseTick, style) {
         const t = ((pulseTick % TOTAL_TICKS) + TOTAL_TICKS) % TOTAL_TICKS;
@@ -354,53 +351,13 @@
           return t < 9 ? MAX_BRIGHTNESS : MIN_BRIGHTNESS;
         }
 
-        /*
-          Smooth symmetric triangle-like pulse:
-          tick 0  = dim
-          tick 8  = near peak
-          tick 9  = peak
-          tick 10 = near peak
-          tick 17 = near dim
-
-          This keeps 11111 at the top of the pulse,
-          with 11110 and 01111 as symmetric neighbors.
-        */
+        // Smooth: 9 master ticks brighten, 9 master ticks dim.
+        // Peak is at tick 9, centered on the 11111 region.
         const distanceFromPeak = Math.abs(t - 9);
         const normalized = 1 - Math.min(distanceFromPeak / 9, 1);
 
         return MIN_BRIGHTNESS +
           normalized * (MAX_BRIGHTNESS - MIN_BRIGHTNESS);
-      }
-
-      function setBarBrightness(value) {
-        barGroup.style.opacity = String(value);
-      }
-
-      function setBorderBrightness(value) {
-        border.style.opacity = String(value);
-      }
-
-      function applyPulseTarget(target, style) {
-        const normal = pulseBrightness(tick, style);
-        const inverse = pulseBrightness((tick + 9) % TOTAL_TICKS, style);
-
-        let barBrightness = 1;
-        let borderBrightness = 1;
-
-        if (target === "both") {
-          barBrightness = normal;
-          borderBrightness = normal;
-        } else if (target === "bars") {
-          barBrightness = normal;
-        } else if (target === "border") {
-          borderBrightness = normal;
-        } else if (target === "offset") {
-          barBrightness = normal;
-          borderBrightness = inverse;
-        }
-
-        setBarBrightness(barBrightness);
-        setBorderBrightness(borderBrightness);
       }
 
       function renderBorder(mode) {
@@ -433,21 +390,44 @@
         paintBars(getAnimatedBarState().state);
       }
 
-      function drawActive() {
-        renderBorder(config.active.border);
-        renderBars(config.active.bars);
+      function applyPulse(target, style) {
+        const normal = pulseBrightness(tick, style);
+        const inverse = pulseBrightness((tick + 9) % TOTAL_TICKS, style);
 
-        applyPulseTarget(
-          config.active.pulse,
-          config.active.pulseStyle
-        );
+        let barBrightness = 1;
+        let borderBrightness = 1;
 
-        if (config.active.border === "off") {
-          border.style.opacity = "0";
+        if (target === "both") {
+          barBrightness = normal;
+          borderBrightness = normal;
+        } else if (target === "bars") {
+          barBrightness = normal;
+        } else if (target === "border") {
+          borderBrightness = normal;
+        } else if (target === "offset") {
+          barBrightness = normal;
+          borderBrightness = inverse;
         }
 
-        if (config.active.bars === "off") {
-          barGroup.style.opacity = "1";
+        barGroup.style.opacity = String(barBrightness);
+        border.style.opacity = String(borderBrightness);
+      }
+
+      function renderStatus() {
+        const settings = getSettings();
+
+        if (currentState === "idle") {
+          stateName.textContent = "Idle";
+          status.textContent = "00000 · border off";
+          return;
+        }
+
+        if (currentState === "waiting") {
+          stateName.textContent = "Waiting for Input";
+          status.textContent =
+            `11111 · full border · pulse ${settings.pulse} (${settings.pulseStyle}) · ` +
+            `${settings.speed} ms/tick`;
+          return;
         }
 
         const { index, state } = getAnimatedBarState();
@@ -456,38 +436,20 @@
         stateName.textContent = "Active";
         status.textContent =
           `tick ${tick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
-          `${state.join("")} · pulse ${config.active.pulse} (${config.active.pulseStyle})`;
+          `${state.join("")} · pulse ${settings.pulse} (${settings.pulseStyle})`;
       }
 
-      function drawIdle() {
-        paintBars([0,0,0,0,0]);
-        barGroup.style.opacity = "1";
-        border.style.opacity = "0";
-        stateName.textContent = "Idle";
-        status.textContent = "00000 · border off";
-      }
+      function render() {
+        const settings = getSettings();
 
-      function drawWaiting() {
-        paintBars([1,1,1,1,1]);
+        renderBorder(settings.border);
+        renderBars(settings.bars);
+        applyPulse(settings.pulse, settings.pulseStyle);
 
-        border.setAttribute("stroke-dasharray", "18 0");
-        border.style.strokeDashoffset = "0";
+        if (settings.border === "off") border.style.opacity = "0";
+        if (settings.bars === "off") barGroup.style.opacity = "1";
 
-        applyPulseTarget(
-          config.waiting.pulse,
-          config.waiting.pulseStyle
-        );
-
-        stateName.textContent = "Waiting for Input";
-        status.textContent =
-          `11111 · full border · pulse ${config.waiting.pulse} (${config.waiting.pulseStyle}) · ` +
-          `${config.waiting.speed} ms/tick`;
-      }
-
-      function draw() {
-        if (config.state === "idle") return drawIdle();
-        if (config.state === "waiting") return drawWaiting();
-        drawActive();
+        renderStatus();
       }
 
       function stopClock() {
@@ -500,19 +462,14 @@
 
         if (reset) tick = 0;
 
-        draw();
+        render();
 
-        const speed =
-          config.state === "waiting"
-            ? config.waiting.speed
-            : config.active.speed;
-
-        if (config.state === "idle") return;
+        if (currentState === "idle") return;
 
         timer = setInterval(() => {
           tick = (tick + 1) % TOTAL_TICKS;
-          draw();
-        }, speed);
+          render();
+        }, getSettings().speed);
       }
 
       function selectButton(buttons, datasetKey, value) {
@@ -521,97 +478,62 @@
         });
       }
 
+      function setState(state) {
+        currentState = state;
+
+        selectButton(stateButtons, "state", state);
+
+        activeSettings.classList.toggle("visible", state === "active");
+        waitingSettings.classList.toggle("visible", state === "waiting");
+
+        startClock(true);
+      }
+
+      function bindOption(buttons, datasetKey, state, configKey) {
+        buttons.forEach(button => {
+          button.addEventListener("click", () => {
+            config[state][configKey] = button.dataset[datasetKey];
+            selectButton(buttons, datasetKey, config[state][configKey]);
+
+            if (currentState === state) render();
+          });
+        });
+      }
+
+      function bindSpeedSlider(slider, valueLabel, state) {
+        slider.addEventListener("input", () => {
+          config[state].speed = Number(slider.value);
+          valueLabel.textContent = `${config[state].speed} ms`;
+        });
+
+        slider.addEventListener("change", () => {
+          if (currentState === state) {
+            startClock(false);
+          }
+        });
+      }
+
       stateButtons.forEach(button => {
         button.addEventListener("click", () => {
-          config.state = button.dataset.state;
-          selectButton(stateButtons, "state", config.state);
-
-          activeSettings.classList.toggle("visible", config.state === "active");
-          waitingSettings.classList.toggle("visible", config.state === "waiting");
-
-          startClock(true);
+          setState(button.dataset.state);
         });
       });
 
-      activeBorderButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          config.active.border = button.dataset.activeBorder;
-          selectButton(activeBorderButtons, "activeBorder", config.active.border);
-          draw();
-        });
-      });
+      bindOption(activeBorderButtons, "activeBorder", "active", "border");
+      bindOption(activeBarButtons, "activeBars", "active", "bars");
+      bindOption(activePulseButtons, "activePulse", "active", "pulse");
+      bindOption(activePulseStyleButtons, "activePulseStyle", "active", "pulseStyle");
 
-      activeBarButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          config.active.bars = button.dataset.activeBars;
-          selectButton(activeBarButtons, "activeBars", config.active.bars);
-          draw();
-        });
-      });
+      bindOption(waitingPulseButtons, "waitingPulse", "waiting", "pulse");
+      bindOption(waitingPulseStyleButtons, "waitingPulseStyle", "waiting", "pulseStyle");
 
-      activePulseButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          config.active.pulse = button.dataset.activePulse;
-          selectButton(activePulseButtons, "activePulse", config.active.pulse);
-          draw();
-        });
-      });
-
-      waitingPulseButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          config.waiting.pulse = button.dataset.waitingPulse;
-          selectButton(waitingPulseButtons, "waitingPulse", config.waiting.pulse);
-          draw();
-        });
-      });
-
-      activePulseStyleButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          config.active.pulseStyle = button.dataset.activePulseStyle;
-          selectButton(
-            activePulseStyleButtons,
-            "activePulseStyle",
-            config.active.pulseStyle
-          );
-          draw();
-        });
-      });
-
-      waitingPulseStyleButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          config.waiting.pulseStyle = button.dataset.waitingPulseStyle;
-          selectButton(
-            waitingPulseStyleButtons,
-            "waitingPulseStyle",
-            config.waiting.pulseStyle
-          );
-          draw();
-        });
-      });
-
-      activeSpeedSlider.addEventListener("input", () => {
-        config.active.speed = Number(activeSpeedSlider.value);
-        activeSpeedValue.textContent = `${config.active.speed} ms`;
-
-
-        if (config.state === "active") {
-          startClock(false);
-        }
-      });
-
-      waitingSpeedSlider.addEventListener("input", () => {
-        config.waiting.speed = Number(waitingSpeedSlider.value);
-        waitingSpeedValue.textContent = `${config.waiting.speed} ms`;
-
-
-        if (config.state === "waiting") {
-          startClock(false);
-        }
-      });
+      bindSpeedSlider(activeSpeedSlider, activeSpeedValue, "active");
+      bindSpeedSlider(waitingSpeedSlider, waitingSpeedValue, "waiting");
 
       activeSpeedValue.textContent = `${config.active.speed} ms`;
       waitingSpeedValue.textContent = `${config.waiting.speed} ms`;
-      startClock(true);
+
+      setState("active");
     </script>
   </main>
 </body>
