@@ -173,7 +173,7 @@
         .pulse-normal,
         .pulse-inverse {
             animation-duration: var(--pulse-duration);
-            animation-timing-function: ease-in-out;
+            animation-timing-function: linear;
             animation-iteration-count: infinite;
         }
 
@@ -200,10 +200,26 @@
                 filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
             }
 
-            44.444%,
-            55.556% {
+            33.333% {
+                opacity: 0.65;
+            }
+
+            44.444% {
+                opacity: 0.82;
+            }
+
+            47%,
+            53% {
                 opacity: 1;
                 filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
+            }
+
+            55.556% {
+                opacity: 0.82;
+            }
+
+            66.667% {
+                opacity: 0.65;
             }
         }
 
@@ -215,10 +231,26 @@
                 filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
             }
 
-            44.444%,
-            55.556% {
+            33.333% {
+                opacity: 0.65;
+            }
+
+            44.444% {
+                opacity: 0.46;
+            }
+
+            47%,
+            53% {
                 opacity: 0.28;
                 filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+            }
+
+            55.556% {
+                opacity: 0.46;
+            }
+
+            66.667% {
+                opacity: 0.65;
             }
         }
 
