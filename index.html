@@ -126,9 +126,13 @@
     .bar.on { opacity: 1; }
 
     /*
-      Smooth pulse over one full 18-tick cycle.
-      Same duration + same animation start = perfectly aligned.
-      Offset mode uses the inverse animation for the border.
+      Smooth pulse over one 18-master-tick cycle.
+
+      First 9 master ticks  = brighten
+      Next 9 master ticks   = dim
+      Full pulse cycle      = 18 master ticks
+
+      Offset mode uses the exact inverse for the border.
     */
     .pulse-normal,
     .pulse-inverse {
@@ -415,7 +419,8 @@
       }
 
       function setPulseDuration(speed) {
-        // One pulse cycle = the same 18 ticks as the master clock.
+        // Pulse timing uses the 18-master-tick clock directly:
+      // 9 master ticks up + 9 master ticks down = 18 total.
         document.documentElement.style.setProperty(
           "--pulse-duration",
           `${speed * TOTAL_TICKS}ms`
@@ -533,7 +538,7 @@
         stateName.textContent = "Waiting for Input";
         status.textContent =
           `11111 · full border · pulse ${config.waiting.pulse} (${config.waiting.pulseStyle}) · ` +
-          `${config.waiting.speed} ms/tick · ${config.waiting.speed * 18} ms cycle`;
+          `${config.waiting.speed} ms/master-tick · ${config.waiting.speed * 18} ms pulse cycle`;
       }
 
       function draw() {
