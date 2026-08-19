@@ -253,32 +253,22 @@
     .pulse-border {
       animation:
         borderPulse
-        1.2s
-        ease-in-out
+        var(--pulse-duration)
+        steps(1, end)
         infinite;
     }
 
     .pulse-bar {
       animation:
         barPulse
-        1.2s
-        ease-in-out
+        var(--pulse-duration)
+        steps(1, end)
         infinite;
     }
 
     @keyframes borderPulse {
       0%,
-      100% {
-        opacity: 0.4;
-
-        filter:
-          drop-shadow(
-            0 0 3px
-            rgba(139, 92, 246, 0.12)
-          );
-      }
-
-      50% {
+      49.999% {
         opacity: 1;
 
         filter:
@@ -287,10 +277,8 @@
             rgba(139, 92, 246, 0.5)
           );
       }
-    }
 
-    @keyframes barPulse {
-      0%,
+      50%,
       100% {
         opacity: 0.4;
 
@@ -300,14 +288,28 @@
             rgba(139, 92, 246, 0.12)
           );
       }
+    }
 
-      50% {
+    @keyframes barPulse {
+      0%,
+      49.999% {
         opacity: 1;
 
         filter:
           drop-shadow(
             0 0 10px
             rgba(139, 92, 246, 0.42)
+          );
+      }
+
+      50%,
+      100% {
+        opacity: 0.4;
+
+        filter:
+          drop-shadow(
+            0 0 3px
+            rgba(139, 92, 246, 0.12)
           );
       }
     }
@@ -988,37 +990,55 @@
       }
 
 
+      function syncPulseTiming() {
+
+        document.documentElement.style.setProperty(
+          "--pulse-duration",
+          `${config.speed * TOTAL_TICKS}ms`
+        );
+
+      }
+
+
       function applyPulse(target) {
 
-        clearPulse();
+        syncPulseTiming();
 
 
-        if (
-          target === "both" ||
-          target === "border"
-        ) {
+        const pulseOn =
+          tick < TOTAL_TICKS / 2;
 
-          border.classList.add(
-            "pulse-border"
+
+        const pulseBorder =
+          pulseOn &&
+          (
+            target === "both" ||
+            target === "border"
           );
 
-        }
+
+        border.classList.toggle(
+          "pulse-border",
+          pulseBorder
+        );
 
 
-        if (
-          target === "both" ||
-          target === "bars"
-        ) {
+        const pulseBars =
+          pulseOn &&
+          (
+            target === "both" ||
+            target === "bars"
+          );
 
-          bars.forEach(bar => {
 
-            bar.classList.add(
-              "pulse-bar"
-            );
+        bars.forEach(bar => {
 
-          });
+          bar.classList.toggle(
+            "pulse-bar",
+            pulseBars
+          );
 
-        }
+        });
 
       }
 
@@ -1624,6 +1644,9 @@
             Number(
               speedSlider.value
             );
+
+
+          syncPulseTiming();
 
 
           speedValue.textContent =
