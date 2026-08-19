@@ -175,6 +175,14 @@
       </div>
 
       <div class="setting-row">
+        <div class="setting-title">Bar Style</div>
+        <div class="setting-options">
+          <button type="button" data-active-bar-style="discrete" class="active">Discrete</button>
+          <button type="button" data-active-bar-style="smooth">Smooth</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
         <div class="setting-title">Pulse</div>
         <div class="setting-options">
           <button type="button" data-active-pulse="none" class="active">None</button>
@@ -269,6 +277,7 @@
       const stateButtons = [...document.querySelectorAll("[data-state]")];
       const activeBorderButtons = [...document.querySelectorAll("[data-active-border]")];
       const activeBarButtons = [...document.querySelectorAll("[data-active-bars]")];
+      const activeBarStyleButtons = [...document.querySelectorAll("[data-active-bar-style]")];
       const activePulseButtons = [...document.querySelectorAll("[data-active-pulse]")];
       const waitingPulseButtons = [...document.querySelectorAll("[data-waiting-pulse]")];
       const activePulseStyleButtons = [...document.querySelectorAll("[data-active-pulse-style]")];
@@ -337,6 +346,7 @@
         active: {
           border: "moving",
           bars: "animated",
+          barStyle: "discrete",
           pulse: "none",
           pulseStyle: "smooth",
           speed: 300
@@ -453,7 +463,60 @@
           normalized * (MAX_BRIGHTNESS - MIN_BRIGHTNESS);
       }
 
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function renderSmoothAnimatedBars() {
+        /*
+          Continuous version of:
+          10000 -> 11000 -> 11100 -> 11110 -> 11111
+          -> 01111 -> 00111 -> 00011 -> 00001
+
+          Each transition still occupies 2 logical ticks,
+          but the next bar fades in/out continuously instead
+          of switching abruptly at the boundary.
+        */
+        const statePosition = phaseTicks / 2; // continuous 0..9
+        const MIN_BAR_OPACITY = 0.08;
+
+        if (statePosition < 4) {
+          // Fill left -> right.
+          bars.forEach((bar, i) => {
+            const amount = clamp(statePosition - i + 1, 0, 1);
+            bar.style.opacity =
+              String(MIN_BAR_OPACITY + amount * (1 - MIN_BAR_OPACITY));
+          });
+          return;
+        }
+
+        if (statePosition < 5) {
+          // Hold all five fully lit across the 11111 state.
+          bars.forEach(bar => {
+            bar.style.opacity = "1";
+          });
+          return;
+        }
+
+        // Drain left -> right.
+        const drainPosition = statePosition - 5;
+
+        bars.forEach((bar, i) => {
+          const amount = clamp(i - drainPosition + 1, 0, 1);
+          bar.style.opacity =
+            String(MIN_BAR_OPACITY + amount * (1 - MIN_BAR_OPACITY));
+        });
+      }
+
+      function clearBarInlineOpacity() {
+        bars.forEach(bar => {
+          bar.style.removeProperty("opacity");
+        });
+      }
+
       function renderBars(mode) {
+        clearBarInlineOpacity();
+
         if (mode === "off") {
           paintBars([0,0,0,0,0]);
           return;
@@ -461,6 +524,19 @@
 
         if (mode === "solid") {
           paintBars([1,1,1,1,1]);
+          return;
+        }
+
+        if (
+          currentState === "active" &&
+          config.active.barStyle === "smooth"
+        ) {
+          /*
+            Keep all bars structurally "on" and let inline
+            opacity represent the smooth left-to-right wave.
+          */
+          bars.forEach(bar => bar.classList.add("on"));
+          renderSmoothAnimatedBars();
           return;
         }
 
@@ -542,7 +618,7 @@
         stateName.textContent = "Active";
         status.textContent =
           `tick ${logicalTick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
-          `${state.join("")} · pulse ${s.pulse} (${s.pulseStyle})`;
+          `${state.join("")} · bars ${s.barStyle} · pulse ${s.pulse} (${s.pulseStyle})`;
       }
 
       function render() {
@@ -699,6 +775,13 @@
       );
 
       bindOption(
+        activeBarStyleButtons,
+        "activeBarStyle",
+        "active",
+        "barStyle"
+      );
+
+      bindOption(
         activePulseButtons,
         "activePulse",
         "active",
@@ -748,4 +831,4 @@
     </script>
   </main>
 </body>
-</html>f
+</html>
