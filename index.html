@@ -285,23 +285,46 @@
       const stateName = document.getElementById("stateName");
       const status = document.getElementById("status");
 
-      const executionStates = [
-        [1,0,0,0,0],
-        [1,1,0,0,0],
-        [1,1,1,0,0],
-        [1,1,1,1,0],
-        [1,1,1,1,1],
-        [0,1,1,1,1],
-        [0,0,1,1,1],
-        [0,0,0,1,1],
-        [0,0,0,0,1]
-      ];
+      /*
+        ============================================================
+        ONE MASTER TIMELINE
+        ============================================================
 
-      const SUBTICKS = 10;
+        18 logical ticks per full cycle.
+
+        Bars:
+          9 states × 2 logical ticks = 18
+
+        Border:
+          6 sides × 3 logical ticks = 18
+
+        Pulse:
+          9 logical ticks brighten
+          9 logical ticks dim
+
+        Offset:
+          +9 logical ticks (exact half-cycle)
+
+        requestAnimationFrame only decides WHEN to draw.
+        elapsed time decides WHERE everything is on the timeline.
+      */
+
       const LOGICAL_TICKS = 18;
-      const TOTAL_TICKS = LOGICAL_TICKS * SUBTICKS; // 180
+      const HALF_CYCLE = LOGICAL_TICKS / 2; // 9
       const MIN_BRIGHTNESS = 0.28;
       const MAX_BRIGHTNESS = 1.0;
+
+      const executionStates = [
+        [1,0,0,0,0], // 10000
+        [1,1,0,0,0], // 11000
+        [1,1,1,0,0], // 11100
+        [1,1,1,1,0], // 11110
+        [1,1,1,1,1], // 11111
+        [0,1,1,1,1], // 01111
+        [0,0,1,1,1], // 00111
+        [0,0,0,1,1], // 00011
+        [0,0,0,0,1]  // 00001
+      ];
 
       const config = {
         idle: {
@@ -328,11 +351,49 @@
       };
 
       let currentState = "active";
-      let tick = 0;
-      let timer = null;
 
-      function getSettings() {
+      /*
+        phaseTicks is a CONTINUOUS value in [0,18).
+        Example: 8.42 means we're 42% through logical tick 8.
+
+        This is the single master position used by every visual.
+      */
+      let phaseTicks = 0;
+
+      let rafId = null;
+      let lastFrameTime = null;
+
+      function settings() {
         return config[currentState];
+      }
+
+      function wrapPhase(value) {
+        return ((value % LOGICAL_TICKS) + LOGICAL_TICKS) % LOGICAL_TICKS;
+      }
+
+      /*
+        Advance the SAME master phase from real elapsed time.
+
+        speed = milliseconds per logical tick.
+        So if 16.67 ms elapsed on a 60 Hz display and speed = 300:
+          phase advances by 16.67 / 300 logical ticks.
+
+        No fixed microtick resolution is needed anymore.
+      */
+      function advanceMasterPhase(now) {
+        if (lastFrameTime === null) {
+          lastFrameTime = now;
+          return;
+        }
+
+        const elapsedMs = now - lastFrameTime;
+        lastFrameTime = now;
+
+        if (currentState === "idle") return;
+
+        phaseTicks = wrapPhase(
+          phaseTicks + elapsedMs / settings().speed
+        );
       }
 
       function paintBars(state) {
@@ -341,47 +402,55 @@
         });
       }
 
-      function getAnimatedBarState() {
-        const index = Math.floor(tick / (2 * SUBTICKS));
-        return { index, state: executionStates[index] };
+      function getBarState() {
+        // Each visible bar state occupies exactly 2 logical ticks.
+        const index = Math.floor(phaseTicks / 2) % executionStates.length;
+
+        return {
+          index,
+          state: executionStates[index]
+        };
       }
 
-      function pulseBrightness(pulseTick, style) {
-        const t = ((pulseTick % TOTAL_TICKS) + TOTAL_TICKS) % TOTAL_TICKS;
-        const halfCycle = TOTAL_TICKS / 2; // 90 microticks
+      /*
+        Single pulse function.
+
+        Smooth:
+          phase 0  -> minimum
+          phase 9  -> maximum
+          phase 18 -> minimum
+
+        Binary:
+          first half bright
+          second half dim
+
+        Offset is NOT a separate pulse implementation.
+        It is simply this exact function evaluated at phase + 9.
+      */
+      function pulseBrightness(phase, style) {
+        const t = wrapPhase(phase);
 
         if (style === "binary") {
-          return t < halfCycle ? MAX_BRIGHTNESS : MIN_BRIGHTNESS;
+          return t < HALF_CYCLE
+            ? MAX_BRIGHTNESS
+            : MIN_BRIGHTNESS;
         }
 
-        // Smooth:
-        // first 90 microticks  = dim -> bright
-        // next 90 microticks   = bright -> dim
-        // Peak is centered at the halfway point.
-        const distanceFromPeak = Math.abs(t - halfCycle);
-        const normalized = 1 - Math.min(distanceFromPeak / halfCycle, 1);
+        /*
+          Smooth triangle waveform:
+          0 -> 9  : brighten continuously
+          9 -> 18 : dim continuously
+
+          Because phase is continuous, this is smooth regardless
+          of the selected logical-tick speed.
+        */
+        const normalized =
+          t <= HALF_CYCLE
+            ? t / HALF_CYCLE
+            : (LOGICAL_TICKS - t) / HALF_CYCLE;
 
         return MIN_BRIGHTNESS +
           normalized * (MAX_BRIGHTNESS - MIN_BRIGHTNESS);
-      }
-
-      function renderBorder(mode) {
-        if (mode === "off") {
-          border.style.opacity = "0";
-          return;
-        }
-
-        if (mode === "solid") {
-          border.setAttribute("stroke-dasharray", "18 0");
-          border.style.strokeDashoffset = "0";
-          return;
-        }
-
-        border.setAttribute("stroke-dasharray", "3 15");
-
-        // SVG pathLength is still 18 units, so convert 180 microticks
-        // back into the original 18-unit path scale.
-        border.style.strokeDashoffset = String(tick / SUBTICKS);
       }
 
       function renderBars(mode) {
@@ -395,13 +464,38 @@
           return;
         }
 
-        paintBars(getAnimatedBarState().state);
+        paintBars(getBarState().state);
+      }
+
+      function renderBorder(mode) {
+        if (mode === "off") {
+          border.setAttribute("stroke-dasharray", "3 15");
+          return;
+        }
+
+        if (mode === "solid") {
+          border.setAttribute("stroke-dasharray", "18 0");
+          border.style.strokeDashoffset = "0";
+          return;
+        }
+
+        /*
+          The SVG pathLength is 18, matching the logical timeline.
+          So the continuous phase can be used directly.
+        */
+        border.setAttribute("stroke-dasharray", "3 15");
+        border.style.strokeDashoffset = String(phaseTicks);
       }
 
       function applyPulse(target, style) {
-        const normal = pulseBrightness(tick, style);
+        const normal = pulseBrightness(phaseTicks, style);
+
+        /*
+          Exact inverse phase.
+          No second clock, CSS animation, delay, or restart logic.
+        */
         const inverse = pulseBrightness(
-          (tick + TOTAL_TICKS / 2) % TOTAL_TICKS,
+          phaseTicks + HALF_CYCLE,
           style
         );
 
@@ -425,7 +519,7 @@
       }
 
       function renderStatus() {
-        const settings = getSettings();
+        const s = settings();
 
         if (currentState === "idle") {
           stateName.textContent = "Idle";
@@ -436,56 +530,79 @@
         if (currentState === "waiting") {
           stateName.textContent = "Waiting for Input";
           status.textContent =
-            `11111 · full border · pulse ${settings.pulse} (${settings.pulseStyle}) · ` +
-            `${settings.speed} ms/tick`;
+            `11111 · full border · pulse ${s.pulse} (${s.pulseStyle}) · ` +
+            `${s.speed} ms / logical tick`;
           return;
         }
 
-        const { index, state } = getAnimatedBarState();
-        const side = Math.floor(tick / (3 * SUBTICKS)) + 1;
+        const { index, state } = getBarState();
+        const logicalTick = Math.floor(phaseTicks);
+        const side = Math.floor(phaseTicks / 3) + 1;
 
         stateName.textContent = "Active";
         status.textContent =
-          `tick ${Math.floor(tick / SUBTICKS) + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
-          `${state.join("")} · pulse ${settings.pulse} (${settings.pulseStyle})`;
+          `tick ${logicalTick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
+          `${state.join("")} · pulse ${s.pulse} (${s.pulseStyle})`;
       }
 
       function render() {
-        const settings = getSettings();
+        const s = settings();
 
-        renderBorder(settings.border);
-        renderBars(settings.bars);
-        applyPulse(settings.pulse, settings.pulseStyle);
+        renderBorder(s.border);
+        renderBars(s.bars);
+        applyPulse(s.pulse, s.pulseStyle);
 
-        if (settings.border === "off") border.style.opacity = "0";
-        if (settings.bars === "off") barGroup.style.opacity = "1";
+        /*
+          Pulse writes opacity after border/bar rendering.
+          Enforce true "off" states last.
+        */
+        if (s.border === "off") {
+          border.style.opacity = "0";
+        }
+
+        if (s.bars === "off") {
+          barGroup.style.opacity = "1";
+        }
 
         renderStatus();
       }
 
-      function stopClock() {
-        clearInterval(timer);
-        timer = null;
+      /*
+        ONE animation loop for Active and Waiting.
+
+        requestAnimationFrame is synced to browser painting.
+        We never request 5 ms / 10 ms timers anymore.
+      */
+      function animationFrame(now) {
+        advanceMasterPhase(now);
+        render();
+        rafId = requestAnimationFrame(animationFrame);
       }
 
-      function startClock(reset = false) {
-        stopClock();
+      function startAnimation(resetPhase = false) {
+        if (resetPhase) {
+          phaseTicks = 0;
+        }
 
-        if (reset) tick = 0;
+        /*
+          Reset the timestamp whenever state/speed changes so elapsed
+          time from before the change is not incorrectly applied.
+        */
+        lastFrameTime = null;
 
-        render();
-
-        if (currentState === "idle") return;
-
-        timer = setInterval(() => {
-          tick = (tick + 1) % TOTAL_TICKS;
+        if (rafId === null) {
+          rafId = requestAnimationFrame(animationFrame);
+        } else {
           render();
-        }, getSettings().speed / SUBTICKS);
+        }
       }
 
       function selectButton(buttons, datasetKey, value) {
         buttons.forEach(button => {
-          button.classList.toggle("active", button.dataset[datasetKey] === value);
+          button.classList.toggle(
+            "active",
+            button.dataset[datasetKey] === value
+          );
         });
       }
 
@@ -494,32 +611,69 @@
 
         selectButton(stateButtons, "state", state);
 
-        activeSettings.classList.toggle("visible", state === "active");
-        waitingSettings.classList.toggle("visible", state === "waiting");
+        activeSettings.classList.toggle(
+          "visible",
+          state === "active"
+        );
 
-        startClock(true);
+        waitingSettings.classList.toggle(
+          "visible",
+          state === "waiting"
+        );
+
+        /*
+          Each state starts at the same master phase.
+          Active and Waiting therefore use identical timing semantics.
+        */
+        startAnimation(true);
       }
 
-      function bindOption(buttons, datasetKey, state, configKey) {
+      function bindOption(
+        buttons,
+        datasetKey,
+        state,
+        configKey
+      ) {
         buttons.forEach(button => {
           button.addEventListener("click", () => {
-            config[state][configKey] = button.dataset[datasetKey];
-            selectButton(buttons, datasetKey, config[state][configKey]);
+            config[state][configKey] =
+              button.dataset[datasetKey];
 
-            if (currentState === state) render();
+            selectButton(
+              buttons,
+              datasetKey,
+              config[state][configKey]
+            );
+
+            if (currentState === state) {
+              render();
+            }
           });
         });
       }
 
-      function bindSpeedSlider(slider, valueLabel, state) {
+      /*
+        Same exact slider behavior for Active and Waiting.
+
+        "input" updates speed continuously while dragging.
+        No timer is destroyed/recreated, because rAF always runs.
+
+        Resetting lastFrameTime prevents an old delta from being
+        interpreted using the newly selected speed.
+      */
+      function bindSpeedSlider(
+        slider,
+        valueLabel,
+        state
+      ) {
         slider.addEventListener("input", () => {
           config[state].speed = Number(slider.value);
-          valueLabel.textContent = `${config[state].speed} ms / logical tick`;
-        });
 
-        slider.addEventListener("change", () => {
+          valueLabel.textContent =
+            `${config[state].speed} ms / logical tick`;
+
           if (currentState === state) {
-            startClock(false);
+            lastFrameTime = null;
           }
         });
       }
@@ -530,22 +684,68 @@
         });
       });
 
-      bindOption(activeBorderButtons, "activeBorder", "active", "border");
-      bindOption(activeBarButtons, "activeBars", "active", "bars");
-      bindOption(activePulseButtons, "activePulse", "active", "pulse");
-      bindOption(activePulseStyleButtons, "activePulseStyle", "active", "pulseStyle");
+      bindOption(
+        activeBorderButtons,
+        "activeBorder",
+        "active",
+        "border"
+      );
 
-      bindOption(waitingPulseButtons, "waitingPulse", "waiting", "pulse");
-      bindOption(waitingPulseStyleButtons, "waitingPulseStyle", "waiting", "pulseStyle");
+      bindOption(
+        activeBarButtons,
+        "activeBars",
+        "active",
+        "bars"
+      );
 
-      bindSpeedSlider(activeSpeedSlider, activeSpeedValue, "active");
-      bindSpeedSlider(waitingSpeedSlider, waitingSpeedValue, "waiting");
+      bindOption(
+        activePulseButtons,
+        "activePulse",
+        "active",
+        "pulse"
+      );
 
-      activeSpeedValue.textContent = `${config.active.speed} ms / logical tick`;
-      waitingSpeedValue.textContent = `${config.waiting.speed} ms / logical tick`;
+      bindOption(
+        activePulseStyleButtons,
+        "activePulseStyle",
+        "active",
+        "pulseStyle"
+      );
+
+      bindOption(
+        waitingPulseButtons,
+        "waitingPulse",
+        "waiting",
+        "pulse"
+      );
+
+      bindOption(
+        waitingPulseStyleButtons,
+        "waitingPulseStyle",
+        "waiting",
+        "pulseStyle"
+      );
+
+      bindSpeedSlider(
+        activeSpeedSlider,
+        activeSpeedValue,
+        "active"
+      );
+
+      bindSpeedSlider(
+        waitingSpeedSlider,
+        waitingSpeedValue,
+        "waiting"
+      );
+
+      activeSpeedValue.textContent =
+        `${config.active.speed} ms / logical tick`;
+
+      waitingSpeedValue.textContent =
+        `${config.waiting.speed} ms / logical tick`;
 
       setState("active");
     </script>
   </main>
 </body>
-</html>
+</html>f
