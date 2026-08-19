@@ -13,6 +13,7 @@
       --accent: #8b5cf6;
       --text: #f5f5f7;
       --muted: #9ca3af;
+      --pulse-duration: 5400ms;
     }
 
     * { box-sizing: border-box; }
@@ -125,18 +126,72 @@
     .bar.on { opacity: 1; }
 
     /*
-      Pulse is master-clock driven:
-      9 ticks ON, 9 ticks DIM.
-      No independent CSS timing, so bars and border stay perfectly aligned.
+      Smooth pulse over one full 18-tick cycle.
+      Same duration + same animation start = perfectly aligned.
+      Offset mode uses the inverse animation for the border.
     */
-    .pulse-dim-border {
-      opacity: 0.28 !important;
-      filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10)) !important;
+    .pulse-normal,
+    .pulse-inverse {
+      animation-duration: var(--pulse-duration);
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
     }
 
-    .pulse-dim-bars {
-      opacity: 0.28;
-      filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+    .pulse-normal { animation-name: pulseNormal; }
+    .pulse-inverse { animation-name: pulseInverse; }
+
+    @keyframes pulseNormal {
+      0%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
+      }
+      50% {
+        opacity: 0.28;
+        filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+      }
+    }
+
+    @keyframes pulseInverse {
+      0%, 100% {
+        opacity: 0.28;
+        filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
+      }
+    }
+
+    .pulse-binary-normal,
+    .pulse-binary-inverse {
+      animation-duration: var(--pulse-duration);
+      animation-timing-function: steps(1, end);
+      animation-iteration-count: infinite;
+    }
+
+    .pulse-binary-normal { animation-name: pulseBinaryNormal; }
+    .pulse-binary-inverse { animation-name: pulseBinaryInverse; }
+
+    @keyframes pulseBinaryNormal {
+      0%, 49.999% {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
+      }
+      50%, 100% {
+        opacity: 0.28;
+        filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+      }
+    }
+
+    @keyframes pulseBinaryInverse {
+      0%, 49.999% {
+        opacity: 0.28;
+        filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+      }
+      50%, 100% {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
+      }
     }
 
     .status {
@@ -194,6 +249,14 @@
       </div>
 
       <div class="setting-row">
+        <div class="setting-title">Pulse Style</div>
+        <div class="setting-options">
+          <button type="button" data-active-pulse-style="smooth" class="active">Smooth</button>
+          <button type="button" data-active-pulse-style="binary">Binary</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
         <div class="speed-header">
           <div class="setting-title">Speed</div>
           <div id="activeSpeedValue" class="speed-value">300 ms</div>
@@ -209,7 +272,16 @@
           <button type="button" data-waiting-pulse="both" class="active">Both</button>
           <button type="button" data-waiting-pulse="bars">Bars Only</button>
           <button type="button" data-waiting-pulse="border">Border Only</button>
+          <button type="button" data-waiting-pulse="offset">Offset</button>
           <button type="button" data-waiting-pulse="none">None</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-title">Pulse Style</div>
+        <div class="setting-options">
+          <button type="button" data-waiting-pulse-style="smooth" class="active">Smooth</button>
+          <button type="button" data-waiting-pulse-style="binary">Binary</button>
         </div>
       </div>
 
@@ -263,6 +335,8 @@
       const activeBarButtons = [...document.querySelectorAll("[data-active-bars]")];
       const activePulseButtons = [...document.querySelectorAll("[data-active-pulse]")];
       const waitingPulseButtons = [...document.querySelectorAll("[data-waiting-pulse]")];
+      const activePulseStyleButtons = [...document.querySelectorAll("[data-active-pulse-style]")];
+      const waitingPulseStyleButtons = [...document.querySelectorAll("[data-waiting-pulse-style]")];
 
       const activeSettings = document.getElementById("activeSettings");
       const waitingSettings = document.getElementById("waitingSettings");
@@ -296,10 +370,12 @@
           border: "moving",
           bars: "animated",
           pulse: "none",
+          pulseStyle: "smooth",
           speed: 300
         },
         waiting: {
           pulse: "both",
+          pulseStyle: "smooth",
           speed: 300
         }
       };
@@ -308,6 +384,7 @@
       let timer = null;
       let waitingTick = 0;
       let waitingTimer = null;
+      let appliedPulseKey = "";
 
       function paintBars(state) {
         bars.forEach((bar, i) => bar.classList.toggle("on", state[i] === 1));
@@ -319,26 +396,59 @@
       }
 
       function clearPulseVisuals() {
-        border.classList.remove("pulse-dim-border");
-        barGroup.classList.remove("pulse-dim-bars");
+        const classes = [
+          "pulse-normal",
+          "pulse-inverse",
+          "pulse-binary-normal",
+          "pulse-binary-inverse"
+        ];
+
+        border.classList.remove(...classes);
+        barGroup.classList.remove(...classes);
       }
 
-      function applyClockedPulse(target, pulseTick) {
+      function setPulseDuration(speed) {
+        // One pulse cycle = the same 18 ticks as the master clock.
+        document.documentElement.style.setProperty(
+          "--pulse-duration",
+          `${speed * TOTAL_TICKS}ms`
+        );
+      }
+
+      function applyPulse(target, speed, style) {
+        const key = `${target}:${speed}:${style}`;
+        if (appliedPulseKey === key) return;
+
+        setPulseDuration(speed);
         clearPulseVisuals();
 
-        // 18-tick pulse cycle:
-        // ticks 0-8  = ON
-        // ticks 9-17 = DIM
-        const pulseOn = pulseTick < 9;
-        if (pulseOn || target === "none") return;
+        const normalClass =
+          style === "binary"
+            ? "pulse-binary-normal"
+            : "pulse-normal";
 
-        if (target === "both" || target === "border") {
-          border.classList.add("pulse-dim-border");
+        const inverseClass =
+          style === "binary"
+            ? "pulse-binary-inverse"
+            : "pulse-inverse";
+
+        if (target === "both") {
+          border.classList.add(normalClass);
+          barGroup.classList.add(normalClass);
+        } else if (target === "bars") {
+          barGroup.classList.add(normalClass);
+        } else if (target === "border") {
+          border.classList.add(normalClass);
+        } else if (target === "offset") {
+          barGroup.classList.add(normalClass);
+          border.classList.add(inverseClass);
         }
 
-        if (target === "both" || target === "bars") {
-          barGroup.classList.add("pulse-dim-bars");
-        }
+        appliedPulseKey = key;
+      }
+
+      function invalidatePulse() {
+        appliedPulseKey = "";
       }
 
       function renderBorder(mode) {
@@ -347,11 +457,15 @@
           return;
         }
 
-        // Don't write opacity while border is pulsing; the CSS animation owns it.
-        if (!border.classList.contains("pulse-border")) {
-          border.style.opacity = "1";
-        } else {
+        if (
+          border.classList.contains("pulse-normal") ||
+          border.classList.contains("pulse-inverse") ||
+          border.classList.contains("pulse-binary-normal") ||
+          border.classList.contains("pulse-binary-inverse")
+        ) {
           border.style.removeProperty("opacity");
+        } else {
+          border.style.opacity = "1";
         }
 
         if (mode === "solid") {
@@ -381,18 +495,20 @@
       function drawActive() {
         renderBorder(config.active.border);
         renderBars(config.active.bars);
-        applyClockedPulse(config.active.pulse, tick);
+        applyPulse(config.active.pulse, config.active.speed, config.active.pulseStyle);
 
         const { index, state } = getAnimatedBarState();
         const side = Math.floor(tick / 3) + 1;
 
         stateName.textContent = "Active";
         status.textContent =
-          `tick ${tick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ${state.join("")} · pulse ${config.active.pulse}`;
+          `tick ${tick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
+          `${state.join("")} · pulse ${config.active.pulse} (${config.active.pulseStyle})`;
       }
 
       function drawIdle() {
         clearPulseVisuals();
+        appliedPulseKey = "";
         paintBars([0,0,0,0,0]);
         border.style.opacity = "0";
         stateName.textContent = "Idle";
@@ -402,16 +518,15 @@
       function drawWaiting() {
         paintBars([1,1,1,1,1]);
 
-        border.style.opacity = "1";
         border.setAttribute("stroke-dasharray", "18 0");
         border.style.strokeDashoffset = "0";
 
-        applyClockedPulse(config.waiting.pulse, waitingTick);
+        applyPulse(config.waiting.pulse, config.waiting.speed, config.waiting.pulseStyle);
 
         stateName.textContent = "Waiting for Input";
         status.textContent =
-          `11111 · full border · pulse ${config.waiting.pulse} · ` +
-          `tick ${waitingTick + 1}/18 · ${config.waiting.speed} ms`;
+          `11111 · full border · pulse ${config.waiting.pulse} (${config.waiting.pulseStyle}) · ` +
+          `${config.waiting.speed} ms/tick · ${config.waiting.speed * 18} ms cycle`;
       }
 
       function draw() {
@@ -444,12 +559,6 @@
           }, config.active.speed);
         }
 
-        if (config.state === "waiting") {
-          waitingTimer = setInterval(() => {
-            waitingTick = (waitingTick + 1) % TOTAL_TICKS;
-            draw();
-          }, config.waiting.speed);
-        }
       }
 
       function selectButton(buttons, datasetKey, value) {
@@ -466,6 +575,7 @@
           activeSettings.classList.toggle("visible", config.state === "active");
           waitingSettings.classList.toggle("visible", config.state === "waiting");
 
+          invalidatePulse();
           startClock(true);
         });
       });
@@ -490,6 +600,7 @@
         button.addEventListener("click", () => {
           config.active.pulse = button.dataset.activePulse;
           selectButton(activePulseButtons, "activePulse", config.active.pulse);
+          invalidatePulse();
           draw();
         });
       });
@@ -498,6 +609,33 @@
         button.addEventListener("click", () => {
           config.waiting.pulse = button.dataset.waitingPulse;
           selectButton(waitingPulseButtons, "waitingPulse", config.waiting.pulse);
+          invalidatePulse();
+          draw();
+        });
+      });
+
+      activePulseStyleButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          config.active.pulseStyle = button.dataset.activePulseStyle;
+          selectButton(
+            activePulseStyleButtons,
+            "activePulseStyle",
+            config.active.pulseStyle
+          );
+          invalidatePulse();
+          draw();
+        });
+      });
+
+      waitingPulseStyleButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          config.waiting.pulseStyle = button.dataset.waitingPulseStyle;
+          selectButton(
+            waitingPulseStyleButtons,
+            "waitingPulseStyle",
+            config.waiting.pulseStyle
+          );
+          invalidatePulse();
           draw();
         });
       });
@@ -518,7 +656,7 @@
 
 
         if (config.state === "waiting") {
-          startClock(false);
+          draw();
         }
       });
 
