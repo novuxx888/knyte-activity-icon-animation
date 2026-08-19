@@ -297,7 +297,9 @@
         [0,0,0,0,1]
       ];
 
-      const TOTAL_TICKS = 18;
+      const SUBTICKS = 10;
+      const LOGICAL_TICKS = 18;
+      const TOTAL_TICKS = LOGICAL_TICKS * SUBTICKS; // 180
       const MIN_BRIGHTNESS = 0.28;
       const MAX_BRIGHTNESS = 1.0;
 
@@ -340,21 +342,24 @@
       }
 
       function getAnimatedBarState() {
-        const index = Math.floor(tick / 2);
+        const index = Math.floor(tick / (2 * SUBTICKS));
         return { index, state: executionStates[index] };
       }
 
       function pulseBrightness(pulseTick, style) {
         const t = ((pulseTick % TOTAL_TICKS) + TOTAL_TICKS) % TOTAL_TICKS;
+        const halfCycle = TOTAL_TICKS / 2; // 90 microticks
 
         if (style === "binary") {
-          return t < 9 ? MAX_BRIGHTNESS : MIN_BRIGHTNESS;
+          return t < halfCycle ? MAX_BRIGHTNESS : MIN_BRIGHTNESS;
         }
 
-        // Smooth: 9 master ticks brighten, 9 master ticks dim.
-        // Peak is at tick 9, centered on the 11111 region.
-        const distanceFromPeak = Math.abs(t - 9);
-        const normalized = 1 - Math.min(distanceFromPeak / 9, 1);
+        // Smooth:
+        // first 90 microticks  = dim -> bright
+        // next 90 microticks   = bright -> dim
+        // Peak is centered at the halfway point.
+        const distanceFromPeak = Math.abs(t - halfCycle);
+        const normalized = 1 - Math.min(distanceFromPeak / halfCycle, 1);
 
         return MIN_BRIGHTNESS +
           normalized * (MAX_BRIGHTNESS - MIN_BRIGHTNESS);
@@ -373,7 +378,10 @@
         }
 
         border.setAttribute("stroke-dasharray", "3 15");
-        border.style.strokeDashoffset = String(tick);
+
+        // SVG pathLength is still 18 units, so convert 180 microticks
+        // back into the original 18-unit path scale.
+        border.style.strokeDashoffset = String(tick / SUBTICKS);
       }
 
       function renderBars(mode) {
@@ -392,7 +400,10 @@
 
       function applyPulse(target, style) {
         const normal = pulseBrightness(tick, style);
-        const inverse = pulseBrightness((tick + 9) % TOTAL_TICKS, style);
+        const inverse = pulseBrightness(
+          (tick + TOTAL_TICKS / 2) % TOTAL_TICKS,
+          style
+        );
 
         let barBrightness = 1;
         let borderBrightness = 1;
@@ -431,11 +442,11 @@
         }
 
         const { index, state } = getAnimatedBarState();
-        const side = Math.floor(tick / 3) + 1;
+        const side = Math.floor(tick / (3 * SUBTICKS)) + 1;
 
         stateName.textContent = "Active";
         status.textContent =
-          `tick ${tick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
+          `tick ${Math.floor(tick / SUBTICKS) + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
           `${state.join("")} · pulse ${settings.pulse} (${settings.pulseStyle})`;
       }
 
@@ -469,7 +480,7 @@
         timer = setInterval(() => {
           tick = (tick + 1) % TOTAL_TICKS;
           render();
-        }, getSettings().speed);
+        }, getSettings().speed / SUBTICKS);
       }
 
       function selectButton(buttons, datasetKey, value) {
@@ -503,7 +514,7 @@
       function bindSpeedSlider(slider, valueLabel, state) {
         slider.addEventListener("input", () => {
           config[state].speed = Number(slider.value);
-          valueLabel.textContent = `${config[state].speed} ms`;
+          valueLabel.textContent = `${config[state].speed} ms / logical tick`;
         });
 
         slider.addEventListener("change", () => {
@@ -530,8 +541,8 @@
       bindSpeedSlider(activeSpeedSlider, activeSpeedValue, "active");
       bindSpeedSlider(waitingSpeedSlider, waitingSpeedValue, "waiting");
 
-      activeSpeedValue.textContent = `${config.active.speed} ms`;
-      waitingSpeedValue.textContent = `${config.waiting.speed} ms`;
+      activeSpeedValue.textContent = `${config.active.speed} ms / logical tick`;
+      waitingSpeedValue.textContent = `${config.waiting.speed} ms / logical tick`;
 
       setState("active");
     </script>
