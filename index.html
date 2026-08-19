@@ -140,25 +140,32 @@
     .pulse-normal { animation-name: pulseNormal; }
     .pulse-inverse { animation-name: pulseInverse; }
 
+    /*
+      Smooth pulse phase:
+      first 9 ticks  = DIM -> FULL
+      next 9 ticks   = FULL -> DIM
+
+      Offset uses the exact inverse.
+    */
     @keyframes pulseNormal {
       0%, 100% {
-        opacity: 1;
-        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
-      }
-      50% {
         opacity: 0.28;
         filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
+      }
+      50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
       }
     }
 
     @keyframes pulseInverse {
       0%, 100% {
-        opacity: 0.28;
-        filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
-      }
-      50% {
         opacity: 1;
         filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.48));
+      }
+      50% {
+        opacity: 0.28;
+        filter: drop-shadow(0 0 2px rgba(139, 92, 246, 0.10));
       }
     }
 
