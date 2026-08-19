@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Knyte States</title>
 
   <style>
@@ -22,11 +23,22 @@
     body {
       margin: 0;
       min-height: 100vh;
+
       background: var(--bg);
       color: var(--text);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
       display: flex;
       justify-content: center;
+
       padding: 48px 20px;
     }
 
@@ -44,30 +56,33 @@
       color: var(--muted);
     }
 
-    .controls,
-    .subcontrols {
+    /*
+      ========================================
+      BUTTONS / CONTROLS
+      ========================================
+    */
+
+    .controls {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 14px;
-    }
 
-    .subcontrols {
-      display: none;
-    }
-
-    .subcontrols.visible {
-      display: flex;
+      margin-bottom: 18px;
     }
 
     button {
       appearance: none;
+
       border: 1px solid var(--border);
       background: var(--panel);
       color: var(--text);
+
       padding: 10px 16px;
+
       border-radius: 10px;
+
       cursor: pointer;
+
       font: inherit;
     }
 
@@ -77,403 +92,1598 @@
 
     button.active {
       border-color: var(--accent);
-      background: rgba(139, 92, 246, 0.14);
+
+      background:
+        rgba(139, 92, 246, 0.14);
     }
 
-    .speed-wrap {
-      margin: 6px 0 10px;
-      padding: 14px 16px;
+    /*
+      ========================================
+      SETTINGS PANEL
+      ========================================
+    */
+
+    .settings {
+      display: none;
+
+      margin-top: 12px;
+      margin-bottom: 24px;
+
+      padding: 18px;
+
       border: 1px solid var(--border);
       border-radius: 14px;
+
       background: var(--panel);
     }
+
+    .settings.visible {
+      display: block;
+    }
+
+    .setting-row {
+      margin-bottom: 20px;
+    }
+
+    .setting-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .setting-title {
+      margin-bottom: 9px;
+
+      color: var(--muted);
+
+      font-size: 14px;
+    }
+
+    .setting-options {
+      display: flex;
+      flex-wrap: wrap;
+
+      gap: 8px;
+    }
+
+    /*
+      ========================================
+      SPEED
+      ========================================
+    */
 
     .speed-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 16px;
+
+      gap: 12px;
+
       margin-bottom: 10px;
     }
 
-    .speed-label {
-      font-size: 14px;
-      color: var(--muted);
-    }
-
     .speed-value {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+
       color: var(--text);
-      font-size: 14px;
     }
 
     input[type="range"] {
       width: 100%;
+
       cursor: pointer;
     }
+
+    /*
+      ========================================
+      LOGO
+      ========================================
+    */
 
     .logo-wrap {
       display: flex;
       justify-content: center;
-      padding: 36px 0;
+
+      padding: 30px 0 38px;
     }
 
     svg {
       width: min(340px, 82vw);
       height: auto;
+
       overflow: visible;
     }
 
     .base-border {
       fill: none;
+
       stroke: var(--border);
       stroke-width: 8;
+
       stroke-linejoin: round;
+
       opacity: 0.3;
     }
 
     .active-border {
       fill: none;
+
       stroke: var(--accent);
       stroke-width: 8;
+
       stroke-linejoin: round;
       stroke-linecap: round;
-      filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.22));
+
+      filter:
+        drop-shadow(
+          0 0 6px
+          rgba(139, 92, 246, 0.22)
+        );
     }
 
     .bar {
       fill: var(--accent);
+
       opacity: 0.08;
-      transition: opacity 100ms linear;
-      filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.18));
+
+      transition:
+        opacity 80ms linear;
+
+      filter:
+        drop-shadow(
+          0 0 4px
+          rgba(139, 92, 246, 0.18)
+        );
     }
 
     .bar.on {
       opacity: 1;
     }
 
+    /*
+      ========================================
+      PULSE
+      ========================================
+    */
+
     .pulse-border {
-      animation: borderPulse 1.25s ease-in-out infinite;
+      animation:
+        borderPulse
+        1.2s
+        ease-in-out
+        infinite;
     }
 
     .pulse-bar {
-      animation: barPulse 1.25s ease-in-out infinite;
+      animation:
+        barPulse
+        1.2s
+        ease-in-out
+        infinite;
     }
 
     @keyframes borderPulse {
-      0%, 100% {
-        opacity: 0.42;
-        filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.15));
+      0%,
+      100% {
+        opacity: 0.4;
+
+        filter:
+          drop-shadow(
+            0 0 3px
+            rgba(139, 92, 246, 0.12)
+          );
       }
+
       50% {
         opacity: 1;
-        filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.45));
+
+        filter:
+          drop-shadow(
+            0 0 14px
+            rgba(139, 92, 246, 0.5)
+          );
       }
     }
 
     @keyframes barPulse {
-      0%, 100% {
-        opacity: 0.45;
-        filter: drop-shadow(0 0 3px rgba(139, 92, 246, 0.12));
+      0%,
+      100% {
+        opacity: 0.4;
+
+        filter:
+          drop-shadow(
+            0 0 3px
+            rgba(139, 92, 246, 0.12)
+          );
       }
+
       50% {
         opacity: 1;
-        filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.38));
+
+        filter:
+          drop-shadow(
+            0 0 10px
+            rgba(139, 92, 246, 0.42)
+          );
       }
     }
+
+    /*
+      ========================================
+      STATUS
+      ========================================
+    */
 
     .status {
       text-align: center;
+
       color: var(--muted);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+      font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
     }
 
     .state-name {
-      color: var(--text);
       margin-bottom: 6px;
-      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+
+      color: var(--text);
+
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        sans-serif;
     }
   </style>
 </head>
 
 <body>
+
   <main>
+
     <h1>Knyte States</h1>
-    <p class="description">Visual states for a Knyte execution agent.</p>
+
+    <p class="description">
+      Modular visual states for a Knyte execution agent.
+    </p>
+
+
+    <!-- ======================================
+         MAIN STATE
+         ====================================== -->
 
     <div class="controls">
-      <button type="button" data-state="idle">Idle</button>
-      <button type="button" data-state="active" class="active">Active</button>
-      <button type="button" data-state="waiting">Waiting for input</button>
+
+      <button
+        type="button"
+        data-state="idle"
+      >
+        Idle
+      </button>
+
+
+      <button
+        type="button"
+        data-state="active"
+        class="active"
+      >
+        Active
+      </button>
+
+
+      <button
+        type="button"
+        data-state="waiting"
+      >
+        Waiting for Input
+      </button>
+
     </div>
 
-    <div id="activeControls" class="subcontrols visible">
-      <button type="button" data-active-mode="moving" class="active">Moving Border</button>
-      <button type="button" data-active-mode="solid">Solid Border</button>
-    </div>
 
-    <div class="speed-wrap">
-      <div class="speed-header">
-        <div class="speed-label">Animation speed</div>
-        <div id="speedValue" class="speed-value">300 ms / tick</div>
+    <!-- ======================================
+         ACTIVE SETTINGS
+         ====================================== -->
+
+    <section
+      id="activeSettings"
+      class="settings visible"
+    >
+
+      <!-- BORDER MODE -->
+
+      <div class="setting-row">
+
+        <div class="setting-title">
+          Border
+        </div>
+
+        <div class="setting-options">
+
+          <button
+            type="button"
+            data-active-border="moving"
+            class="active"
+          >
+            Moving
+          </button>
+
+          <button
+            type="button"
+            data-active-border="solid"
+          >
+            Solid
+          </button>
+
+          <button
+            type="button"
+            data-active-border="off"
+          >
+            Off
+          </button>
+
+        </div>
+
       </div>
-      <input
-        id="speedSlider"
-        type="range"
-        min="100"
-        max="900"
-        step="25"
-        value="300"
-      />
-    </div>
+
+
+      <!-- BAR MODE -->
+
+      <div class="setting-row">
+
+        <div class="setting-title">
+          Bars
+        </div>
+
+        <div class="setting-options">
+
+          <button
+            type="button"
+            data-active-bars="animated"
+            class="active"
+          >
+            Animated
+          </button>
+
+          <button
+            type="button"
+            data-active-bars="static"
+          >
+            Static 10000
+          </button>
+
+          <button
+            type="button"
+            data-active-bars="solid"
+          >
+            Solid 11111
+          </button>
+
+          <button
+            type="button"
+            data-active-bars="off"
+          >
+            Off
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- PULSE MODE -->
+
+      <div class="setting-row">
+
+        <div class="setting-title">
+          Pulse
+        </div>
+
+        <div class="setting-options">
+
+          <button
+            type="button"
+            data-active-pulse="none"
+            class="active"
+          >
+            None
+          </button>
+
+          <button
+            type="button"
+            data-active-pulse="both"
+          >
+            Both
+          </button>
+
+          <button
+            type="button"
+            data-active-pulse="bars"
+          >
+            Bars
+          </button>
+
+          <button
+            type="button"
+            data-active-pulse="border"
+          >
+            Border
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- SPEED -->
+
+      <div class="setting-row">
+
+        <div class="speed-header">
+
+          <div class="setting-title">
+            Animation Speed
+          </div>
+
+          <div
+            id="speedValue"
+            class="speed-value"
+          >
+            300 ms / tick
+          </div>
+
+        </div>
+
+        <input
+          id="speedSlider"
+          type="range"
+          min="50"
+          max="500"
+          step="10"
+          value="300"
+        />
+
+      </div>
+
+    </section>
+
+
+    <!-- ======================================
+         WAITING SETTINGS
+         ====================================== -->
+
+    <section
+      id="waitingSettings"
+      class="settings"
+    >
+
+      <div class="setting-row">
+
+        <div class="setting-title">
+          Waiting Pulse
+        </div>
+
+        <div class="setting-options">
+
+          <button
+            type="button"
+            data-waiting-pulse="both"
+            class="active"
+          >
+            Both
+          </button>
+
+          <button
+            type="button"
+            data-waiting-pulse="bars"
+          >
+            Bars Only
+          </button>
+
+          <button
+            type="button"
+            data-waiting-pulse="border"
+          >
+            Border Only
+          </button>
+
+          <button
+            type="button"
+            data-waiting-pulse="none"
+          >
+            None
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- ======================================
+         LOGO
+         ====================================== -->
 
     <div class="logo-wrap">
-      <svg viewBox="0 0 260 260" role="img" aria-label="Animated Knyte logo">
+
+      <svg
+        viewBox="0 0 260 260"
+        role="img"
+        aria-label="Knyte state visualization"
+      >
+
+        <!-- DIM BASE BORDER -->
+
         <path
           class="base-border"
-          d="M47 72 L47 168 L130 216 L213 168 L213 72 L130 24 Z"
+
+          d="
+            M47 72
+            L47 168
+            L130 216
+            L213 168
+            L213 72
+            L130 24
+            Z
+          "
         />
+
+
+        <!-- ACTIVE BORDER -->
 
         <path
           id="activeBorder"
+
           class="active-border"
-          d="M47 72 L47 168 L130 216 L213 168 L213 72 L130 24 L47 72"
+
+          d="
+            M47 72
+            L47 168
+            L130 216
+            L213 168
+            L213 72
+            L130 24
+            L47 72
+          "
+
           pathLength="18"
+
           stroke-dasharray="3 15"
+
           stroke-dashoffset="0"
         />
 
-        <g id="bars" transform="translate(0,-7)">
-          <rect class="bar" x="74"  y="104" width="16" height="52"  rx="8" />
-          <rect class="bar" x="98"  y="88"  width="16" height="84"  rx="8" />
-          <rect class="bar" x="122" y="70"  width="16" height="120" rx="8" />
-          <rect class="bar" x="146" y="88"  width="16" height="84"  rx="8" />
-          <rect class="bar" x="170" y="104" width="16" height="52"  rx="8" />
+
+        <!-- BARS -->
+
+        <g
+          id="bars"
+          transform="translate(0,-7)"
+        >
+
+          <rect
+            class="bar"
+            x="74"
+            y="104"
+            width="16"
+            height="52"
+            rx="8"
+          />
+
+          <rect
+            class="bar"
+            x="98"
+            y="88"
+            width="16"
+            height="84"
+            rx="8"
+          />
+
+          <rect
+            class="bar"
+            x="122"
+            y="70"
+            width="16"
+            height="120"
+            rx="8"
+          />
+
+          <rect
+            class="bar"
+            x="146"
+            y="88"
+            width="16"
+            height="84"
+            rx="8"
+          />
+
+          <rect
+            class="bar"
+            x="170"
+            y="104"
+            width="16"
+            height="52"
+            rx="8"
+          />
+
         </g>
+
       </svg>
+
     </div>
+
+
+    <!-- ======================================
+         STATUS
+         ====================================== -->
 
     <div class="status">
-      <div id="stateName" class="state-name">Active — Moving Border</div>
+
+      <div
+        id="stateName"
+        class="state-name"
+      >
+        Active
+      </div>
+
       <div id="status"></div>
+
     </div>
 
+
     <script>
-      const border = document.getElementById("activeBorder");
-      const bars = [...document.querySelectorAll(".bar")];
-      const stateButtons = [...document.querySelectorAll("[data-state]")];
-      const activeModeButtons = [...document.querySelectorAll("[data-active-mode]")];
-      const activeControls = document.getElementById("activeControls");
-      const stateName = document.getElementById("stateName");
-      const status = document.getElementById("status");
-      const speedSlider = document.getElementById("speedSlider");
-      const speedValue = document.getElementById("speedValue");
+
+      /*
+        ========================================
+        DOM
+        ========================================
+      */
+
+      const border =
+        document.getElementById(
+          "activeBorder"
+        );
+
+
+      const bars =
+        [
+          ...document.querySelectorAll(
+            ".bar"
+          )
+        ];
+
+
+      const stateButtons =
+        [
+          ...document.querySelectorAll(
+            "[data-state]"
+          )
+        ];
+
+
+      const activeBorderButtons =
+        [
+          ...document.querySelectorAll(
+            "[data-active-border]"
+          )
+        ];
+
+
+      const activeBarButtons =
+        [
+          ...document.querySelectorAll(
+            "[data-active-bars]"
+          )
+        ];
+
+
+      const activePulseButtons =
+        [
+          ...document.querySelectorAll(
+            "[data-active-pulse]"
+          )
+        ];
+
+
+      const waitingPulseButtons =
+        [
+          ...document.querySelectorAll(
+            "[data-waiting-pulse]"
+          )
+        ];
+
+
+      const activeSettings =
+        document.getElementById(
+          "activeSettings"
+        );
+
+
+      const waitingSettings =
+        document.getElementById(
+          "waitingSettings"
+        );
+
+
+      const speedSlider =
+        document.getElementById(
+          "speedSlider"
+        );
+
+
+      const speedValue =
+        document.getElementById(
+          "speedValue"
+        );
+
+
+      const stateName =
+        document.getElementById(
+          "stateName"
+        );
+
+
+      const status =
+        document.getElementById(
+          "status"
+        );
+
+
+      /*
+        ========================================
+        BAR EXECUTION CYCLE
+
+        5 ON / 4 OFF
+        ========================================
+
+        10000
+        11000
+        11100
+        11110
+        11111
+        01111
+        00111
+        00011
+        00001
+        repeat
+      */
 
       const executionStates = [
-        [1, 0, 0, 0, 0], // 10000
-        [1, 1, 0, 0, 0], // 11000
-        [1, 1, 1, 0, 0], // 11100
-        [1, 1, 1, 1, 0], // 11110
-        [1, 1, 1, 1, 1], // 11111
-        [0, 1, 1, 1, 1], // 01111
-        [0, 0, 1, 1, 1], // 00111
-        [0, 0, 0, 1, 1], // 00011
-        [0, 0, 0, 0, 1]  // 00001
+
+        [1, 0, 0, 0, 0],
+
+        [1, 1, 0, 0, 0],
+
+        [1, 1, 1, 0, 0],
+
+        [1, 1, 1, 1, 0],
+
+        [1, 1, 1, 1, 1],
+
+        [0, 1, 1, 1, 1],
+
+        [0, 0, 1, 1, 1],
+
+        [0, 0, 0, 1, 1],
+
+        [0, 0, 0, 0, 1]
+
       ];
 
-      const TOTAL_TICKS = 18;
 
-      let currentState = "active";
-      let activeMode = "moving";
-      let tick = 0;
-      let timer = null;
-      let tickMs = Number(speedSlider.value);
+      /*
+        ========================================
+        TIMING
 
-      function updateSpeedLabel() {
-        speedValue.textContent = `${tickMs} ms / tick`;
-      }
+        18 master ticks
 
-      function stopTimer() {
-        clearInterval(timer);
-        timer = null;
-      }
+        Border:
+        6 sides × 3 ticks
 
-      function clearPulse() {
-        border.classList.remove("pulse-border");
-        bars.forEach(bar => bar.classList.remove("pulse-bar"));
-      }
+        Bars:
+        9 states × 2 ticks
+        ========================================
+      */
+
+      const TOTAL_TICKS =
+        18;
+
+
+      /*
+        ========================================
+        CONFIGURATION
+
+        Everything important lives here.
+        ========================================
+      */
+
+      const config = {
+
+        state:
+          "active",
+
+
+        active: {
+
+          border:
+            "moving",
+
+          bars:
+            "animated",
+
+          pulse:
+            "none"
+
+        },
+
+
+        waiting: {
+
+          pulse:
+            "both"
+
+        },
+
+
+        speed:
+          300
+
+      };
+
+
+      /*
+        ========================================
+        RUNTIME
+        ========================================
+      */
+
+      let tick =
+        0;
+
+
+      let timer =
+        null;
+
+
+      /*
+        ========================================
+        HELPERS
+        ========================================
+      */
 
       function paintBars(state) {
-        bars.forEach((bar, index) => {
-          bar.classList.toggle("on", state[index] === 1);
+
+        bars.forEach(
+          (bar, index) => {
+
+            bar.classList.toggle(
+              "on",
+              state[index] === 1
+            );
+
+          }
+        );
+
+      }
+
+
+      function clearPulse() {
+
+        border.classList.remove(
+          "pulse-border"
+        );
+
+
+        bars.forEach(bar => {
+
+          bar.classList.remove(
+            "pulse-bar"
+          );
+
         });
+
       }
 
-      function setAllBarsOn() {
-        paintBars([1, 1, 1, 1, 1]);
+
+      function applyPulse(target) {
+
+        clearPulse();
+
+
+        if (
+          target === "both" ||
+          target === "border"
+        ) {
+
+          border.classList.add(
+            "pulse-border"
+          );
+
+        }
+
+
+        if (
+          target === "both" ||
+          target === "bars"
+        ) {
+
+          bars.forEach(bar => {
+
+            bar.classList.add(
+              "pulse-bar"
+            );
+
+          });
+
+        }
+
       }
 
-      function setAllBarsOff() {
-        paintBars([0, 0, 0, 0, 0]);
-      }
 
-      function drawAnimatedBars() {
-        const barStateIndex = Math.floor(tick / 2);
-        const barState = executionStates[barStateIndex];
-        paintBars(barState);
+      function getAnimatedBarState() {
+
+        const index =
+          Math.floor(
+            tick / 2
+          );
+
+
         return {
-          barStateIndex,
-          barState
+
+          index,
+
+          state:
+            executionStates[index]
+
         };
+
       }
 
-      function drawActiveMoving() {
-        clearPulse();
 
-        const { barStateIndex, barState } = drawAnimatedBars();
-        const side = Math.floor(tick / 3) + 1;
+      /*
+        ========================================
+        BORDER RENDERING
+        ========================================
+      */
 
-        border.style.opacity = "1";
-        border.setAttribute("stroke-dasharray", "3 15");
-        border.style.strokeDashoffset = String(tick);
+      function renderBorder(mode) {
 
-        stateName.textContent = "Active — Moving Border";
+        if (mode === "off") {
+
+          border.style.opacity =
+            "0";
+
+          return;
+
+        }
+
+
+        border.style.opacity =
+          "1";
+
+
+        if (mode === "solid") {
+
+          border.setAttribute(
+            "stroke-dasharray",
+            "18 0"
+          );
+
+
+          border.style.strokeDashoffset =
+            "0";
+
+          return;
+
+        }
+
+
+        /*
+          MOVING BORDER
+        */
+
+        border.setAttribute(
+          "stroke-dasharray",
+          "3 15"
+        );
+
+
+        border.style.strokeDashoffset =
+          String(tick);
+
+      }
+
+
+      /*
+        ========================================
+        BAR RENDERING
+        ========================================
+      */
+
+      function renderBars(mode) {
+
+        if (mode === "off") {
+
+          paintBars([
+            0,
+            0,
+            0,
+            0,
+            0
+          ]);
+
+          return;
+
+        }
+
+
+        if (mode === "solid") {
+
+          paintBars([
+            1,
+            1,
+            1,
+            1,
+            1
+          ]);
+
+          return;
+
+        }
+
+
+        if (mode === "static") {
+
+          paintBars([
+            1,
+            0,
+            0,
+            0,
+            0
+          ]);
+
+          return;
+
+        }
+
+
+        /*
+          ANIMATED
+        */
+
+        const {
+          state
+        } =
+          getAnimatedBarState();
+
+
+        paintBars(state);
+
+      }
+
+
+      /*
+        ========================================
+        ACTIVE
+        ========================================
+      */
+
+      function drawActive() {
+
+        renderBorder(
+          config.active.border
+        );
+
+
+        renderBars(
+          config.active.bars
+        );
+
+
+        applyPulse(
+          config.active.pulse
+        );
+
+
+        const {
+          index,
+          state
+        } =
+          getAnimatedBarState();
+
+
+        const side =
+          Math.floor(
+            tick / 3
+          ) + 1;
+
+
+        stateName.textContent =
+          "Active";
+
+
         status.textContent =
-          `tick ${tick + 1}/18 · side ${side}/6 · bar ${barStateIndex + 1}/9 · ${barState.join("")}`;
+          `tick ${tick + 1}/18 · ` +
+          `side ${side}/6 · ` +
+          `bar ${index + 1}/9 · ` +
+          `${state.join("")}`;
+
       }
 
-      function drawActiveSolid() {
-        clearPulse();
 
-        const { barStateIndex, barState } = drawAnimatedBars();
-
-        border.style.opacity = "1";
-        border.setAttribute("stroke-dasharray", "18 0");
-        border.style.strokeDashoffset = "0";
-
-        stateName.textContent = "Active — Solid Border";
-        status.textContent =
-          `tick ${tick + 1}/18 · bar ${barStateIndex + 1}/9 · ${barState.join("")} · solid border`;
-      }
+      /*
+        ========================================
+        IDLE
+        ========================================
+      */
 
       function drawIdle() {
+
         clearPulse();
-        setAllBarsOff();
-        border.style.opacity = "0";
-        stateName.textContent = "Idle";
-        status.textContent = "00000 · border off";
+
+
+        paintBars([
+          0,
+          0,
+          0,
+          0,
+          0
+        ]);
+
+
+        border.style.opacity =
+          "0";
+
+
+        stateName.textContent =
+          "Idle";
+
+
+        status.textContent =
+          "00000 · border off";
+
       }
+
+
+      /*
+        ========================================
+        WAITING
+        ========================================
+      */
 
       function drawWaiting() {
-        setAllBarsOn();
-        border.style.opacity = "1";
-        border.setAttribute("stroke-dasharray", "18 0");
-        border.style.strokeDashoffset = "0";
 
         clearPulse();
-        border.classList.add("pulse-border");
-        bars.forEach(bar => bar.classList.add("pulse-bar"));
 
-        stateName.textContent = "Waiting for input";
-        status.textContent = "11111 · full border · pulsing";
+
+        /*
+          Waiting always starts
+          fully illuminated.
+        */
+
+        paintBars([
+          1,
+          1,
+          1,
+          1,
+          1
+        ]);
+
+
+        border.style.opacity =
+          "1";
+
+
+        border.setAttribute(
+          "stroke-dasharray",
+          "18 0"
+        );
+
+
+        border.style.strokeDashoffset =
+          "0";
+
+
+        applyPulse(
+          config.waiting.pulse
+        );
+
+
+        stateName.textContent =
+          "Waiting for Input";
+
+
+        status.textContent =
+          `11111 · full border · ` +
+          `pulse: ${config.waiting.pulse}`;
+
       }
 
-      function drawCurrentFrame() {
-        if (currentState === "idle") {
+
+      /*
+        ========================================
+        MAIN DRAW
+        ========================================
+      */
+
+      function draw() {
+
+        if (
+          config.state === "idle"
+        ) {
+
           drawIdle();
+
           return;
+
         }
 
-        if (currentState === "waiting") {
+
+        if (
+          config.state === "waiting"
+        ) {
+
           drawWaiting();
+
           return;
+
         }
 
-        if (activeMode === "moving") {
-          drawActiveMoving();
-        } else {
-          drawActiveSolid();
+
+        drawActive();
+
+      }
+
+
+      /*
+        ========================================
+        CLOCK
+        ========================================
+      */
+
+      function stopClock() {
+
+        clearInterval(timer);
+
+        timer =
+          null;
+
+      }
+
+
+      function startClock(
+        reset = false
+      ) {
+
+        stopClock();
+
+
+        if (reset) {
+
+          tick =
+            0;
+
         }
-      }
 
-      function advanceTick() {
-        if (currentState !== "active") return;
-        tick = (tick + 1) % TOTAL_TICKS;
-        drawCurrentFrame();
-      }
 
-      function startActiveAnimation(resetTick = true) {
-        stopTimer();
-        clearPulse();
+        draw();
 
-        if (resetTick) {
-          tick = 0;
-        }
 
-        drawCurrentFrame();
-        timer = setInterval(advanceTick, tickMs);
-      }
+        /*
+          Active gets master clock.
 
-      function setState(state) {
-        currentState = state;
+          Waiting pulse uses CSS,
+          so no JS clock is needed.
+        */
 
-        stateButtons.forEach(button => {
-          button.classList.toggle("active", button.dataset.state === state);
-        });
+        if (
+          config.state !== "active"
+        ) {
 
-        activeControls.classList.toggle("visible", state === "active");
-
-        stopTimer();
-
-        if (state === "idle") {
-          drawIdle();
           return;
+
         }
 
-        if (state === "waiting") {
-          drawWaiting();
-          return;
-        }
 
-        startActiveAnimation(true);
+        timer =
+          setInterval(
+            () => {
+
+              tick =
+                (tick + 1) %
+                TOTAL_TICKS;
+
+
+              draw();
+
+            },
+
+            config.speed
+          );
+
       }
 
-      function setActiveMode(mode) {
-        activeMode = mode;
 
-        activeModeButtons.forEach(button => {
-          button.classList.toggle("active", button.dataset.activeMode === mode);
-        });
+      /*
+        ========================================
+        BUTTON HELPERS
+        ========================================
+      */
 
-        if (currentState !== "active") return;
+      function selectButton(
+        buttons,
+        attribute,
+        value
+      ) {
 
-        startActiveAnimation(false);
+        buttons.forEach(
+          button => {
+
+            button.classList.toggle(
+              "active",
+
+              button.dataset[
+                attribute
+              ] === value
+            );
+
+          }
+        );
+
       }
 
-      stateButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          setState(button.dataset.state);
-        });
-      });
 
-      activeModeButtons.forEach(button => {
-        button.addEventListener("click", () => {
-          setActiveMode(button.dataset.activeMode);
-        });
-      });
+      /*
+        ========================================
+        MAIN STATE EVENTS
+        ========================================
+      */
 
-      speedSlider.addEventListener("input", () => {
-        tickMs = Number(speedSlider.value);
-        updateSpeedLabel();
+      stateButtons.forEach(
+        button => {
 
-        if (currentState === "active") {
-          startActiveAnimation(false);
+          button.addEventListener(
+            "click",
+
+            () => {
+
+              config.state =
+                button.dataset.state;
+
+
+              selectButton(
+                stateButtons,
+                "state",
+                config.state
+              );
+
+
+              activeSettings
+                .classList.toggle(
+                  "visible",
+
+                  config.state ===
+                    "active"
+                );
+
+
+              waitingSettings
+                .classList.toggle(
+                  "visible",
+
+                  config.state ===
+                    "waiting"
+                );
+
+
+              startClock(true);
+
+            }
+          );
+
         }
-      });
+      );
 
-      updateSpeedLabel();
-      setState("active");
+
+      /*
+        ========================================
+        ACTIVE BORDER EVENTS
+        ========================================
+      */
+
+      activeBorderButtons.forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+
+            () => {
+
+              config.active.border =
+                button.dataset.activeBorder;
+
+
+              selectButton(
+                activeBorderButtons,
+                "activeBorder",
+                config.active.border
+              );
+
+
+              draw();
+
+            }
+          );
+
+        }
+      );
+
+
+      /*
+        ========================================
+        ACTIVE BAR EVENTS
+        ========================================
+      */
+
+      activeBarButtons.forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+
+            () => {
+
+              config.active.bars =
+                button.dataset.activeBars;
+
+
+              selectButton(
+                activeBarButtons,
+                "activeBars",
+                config.active.bars
+              );
+
+
+              draw();
+
+            }
+          );
+
+        }
+      );
+
+
+      /*
+        ========================================
+        ACTIVE PULSE EVENTS
+        ========================================
+      */
+
+      activePulseButtons.forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+
+            () => {
+
+              config.active.pulse =
+                button.dataset.activePulse;
+
+
+              selectButton(
+                activePulseButtons,
+                "activePulse",
+                config.active.pulse
+              );
+
+
+              draw();
+
+            }
+          );
+
+        }
+      );
+
+
+      /*
+        ========================================
+        WAITING PULSE EVENTS
+        ========================================
+      */
+
+      waitingPulseButtons.forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+
+            () => {
+
+              config.waiting.pulse =
+                button.dataset.waitingPulse;
+
+
+              selectButton(
+                waitingPulseButtons,
+                "waitingPulse",
+                config.waiting.pulse
+              );
+
+
+              draw();
+
+            }
+          );
+
+        }
+      );
+
+
+      /*
+        ========================================
+        SPEED
+        ========================================
+      */
+
+      speedSlider.addEventListener(
+        "input",
+
+        () => {
+
+          config.speed =
+            Number(
+              speedSlider.value
+            );
+
+
+          speedValue.textContent =
+            `${config.speed} ms / tick`;
+
+
+          /*
+            Restart clock while preserving
+            current animation phase.
+          */
+
+          if (
+            config.state === "active"
+          ) {
+
+            startClock(false);
+
+          }
+
+        }
+      );
+
+
+      /*
+        ========================================
+        INITIALIZE
+        ========================================
+      */
+
+      speedValue.textContent =
+        `${config.speed} ms / tick`;
+
+
+      startClock(true);
+
     </script>
+
   </main>
+
 </body>
 </html>
