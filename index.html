@@ -183,6 +183,14 @@
       </div>
 
       <div class="setting-row">
+        <div class="setting-title">Peak Hold</div>
+        <div class="setting-options">
+          <button type="button" data-active-peak-hold="hold" class="active">Hold</button>
+          <button type="button" data-active-peak-hold="continuous">Continuous</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
         <div class="setting-title">Pulse</div>
         <div class="setting-options">
           <button type="button" data-active-pulse="none" class="active">None</button>
@@ -278,6 +286,7 @@
       const activeBorderButtons = [...document.querySelectorAll("[data-active-border]")];
       const activeBarButtons = [...document.querySelectorAll("[data-active-bars]")];
       const activeBarStyleButtons = [...document.querySelectorAll("[data-active-bar-style]")];
+      const activePeakHoldButtons = [...document.querySelectorAll("[data-active-peak-hold]")];
       const activePulseButtons = [...document.querySelectorAll("[data-active-pulse]")];
       const waitingPulseButtons = [...document.querySelectorAll("[data-waiting-pulse]")];
       const activePulseStyleButtons = [...document.querySelectorAll("[data-active-pulse-style]")];
@@ -347,6 +356,7 @@
           border: "moving",
           bars: "animated",
           barStyle: "discrete",
+          peakHold: "hold",
           pulse: "none",
           pulseStyle: "smooth",
           speed: 300
@@ -469,42 +479,105 @@
 
       function renderSmoothAnimatedBars() {
         /*
-          Continuous version of:
-          10000 -> 11000 -> 11100 -> 11110 -> 11111
-          -> 01111 -> 00111 -> 00011 -> 00001
+          Smooth bar animation driven only by phaseTicks.
 
-          Each transition still occupies 2 logical ticks,
-          but the next bar fades in/out continuously instead
-          of switching abruptly at the boundary.
+          Hold:
+            keeps 11111 fully lit for one state interval.
+
+          Continuous:
+            reaches 11111 only at the turning point, then
+            immediately begins draining from the left.
+
+          Both modes keep the final transition:
+            00001 -> 00000 -> 10000
+          with no endpoint crossfade.
+        */
+
+        const MIN_BAR_OPACITY = 0.08;
+        const brightness = [0, 0, 0, 0, 0];
+        const continuousPeak = config.active.peakHold === "continuous";
+
+        /*
+          Hold mode uses the original 9-state spacing:
+            fill 0..4
+            full hold 4..5
+            drain 5..8
+            restart 8..9
+
+          Continuous mode reallocates that plateau interval:
+            fill 0..4
+            drain 4..8
+            restart 8..9
+
+          This removes the full-brightness pause without introducing
+          a second clock or changing the 18-tick master cycle.
         */
         const statePosition = phaseTicks / 2; // continuous 0..9
-        const MIN_BAR_OPACITY = 0.08;
 
-        if (statePosition < 4) {
-          // Fill left -> right.
-          bars.forEach((bar, i) => {
-            const amount = clamp(statePosition - i + 1, 0, 1);
-            bar.style.opacity =
-              String(MIN_BAR_OPACITY + amount * (1 - MIN_BAR_OPACITY));
-          });
-          return;
+        if (!continuousPeak) {
+          if (statePosition < 4) {
+            // Fill left -> right.
+            for (let i = 0; i < 5; i++) {
+              brightness[i] = clamp(statePosition - i + 1, 0, 1);
+            }
+          } else if (statePosition < 5) {
+            // Hold 11111.
+            brightness.fill(1);
+          } else if (statePosition < 8) {
+            // Drain left -> right.
+            const drainPosition = statePosition - 5;
+
+            for (let i = 0; i < 5; i++) {
+              brightness[i] = clamp(i - drainPosition + 1, 0, 1);
+            }
+          } else {
+            // 00001 -> 00000 -> 10000
+            const restartPhase = statePosition - 8; // 0..1
+
+            if (restartPhase < 0.5) {
+              const fadeOut = restartPhase / 0.5;
+              brightness[4] = 1 - fadeOut;
+            } else {
+              const fadeIn = (restartPhase - 0.5) / 0.5;
+              brightness[0] = fadeIn;
+            }
+          }
+        } else {
+          if (statePosition < 4) {
+            // Fill left -> right, reaching 11111 at exactly 4.
+            for (let i = 0; i < 5; i++) {
+              brightness[i] = clamp(statePosition - i + 1, 0, 1);
+            }
+          } else if (statePosition < 8) {
+            /*
+              Immediately drain after the peak.
+              Four state-position units are available here, so each
+              left-to-right fade gets an equal continuous interval.
+            */
+            const drainPosition = statePosition - 4;
+
+            for (let i = 0; i < 5; i++) {
+              brightness[i] = clamp(i - drainPosition + 1, 0, 1);
+            }
+          } else {
+            // 00001 -> 00000 -> 10000
+            const restartPhase = statePosition - 8; // 0..1
+
+            if (restartPhase < 0.5) {
+              const fadeOut = restartPhase / 0.5;
+              brightness[4] = 1 - fadeOut;
+            } else {
+              const fadeIn = (restartPhase - 0.5) / 0.5;
+              brightness[0] = fadeIn;
+            }
+          }
         }
-
-        if (statePosition < 5) {
-          // Hold all five fully lit across the 11111 state.
-          bars.forEach(bar => {
-            bar.style.opacity = "1";
-          });
-          return;
-        }
-
-        // Drain left -> right.
-        const drainPosition = statePosition - 5;
 
         bars.forEach((bar, i) => {
-          const amount = clamp(i - drainPosition + 1, 0, 1);
-          bar.style.opacity =
-            String(MIN_BAR_OPACITY + amount * (1 - MIN_BAR_OPACITY));
+          bar.style.opacity = String(
+            MIN_BAR_OPACITY +
+            brightness[i] * (1 - MIN_BAR_OPACITY)
+          );
         });
       }
 
@@ -618,7 +691,7 @@
         stateName.textContent = "Active";
         status.textContent =
           `tick ${logicalTick + 1}/18 · side ${side}/6 · bar ${index + 1}/9 · ` +
-          `${state.join("")} · bars ${s.barStyle} · pulse ${s.pulse} (${s.pulseStyle})`;
+          `${state.join("")} · bars ${s.barStyle}/${s.peakHold} · pulse ${s.pulse} (${s.pulseStyle})`;
       }
 
       function render() {
@@ -779,6 +852,13 @@
         "activeBarStyle",
         "active",
         "barStyle"
+      );
+
+      bindOption(
+        activePeakHoldButtons,
+        "activePeakHold",
+        "active",
+        "peakHold"
       );
 
       bindOption(
